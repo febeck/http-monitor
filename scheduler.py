@@ -28,7 +28,7 @@ class UpdatesScheduler:
         self.statistics_timer.start()
 
         self.traffic_alert_timer = Scheduler(
-            config.get('TRAFFIC_ALERT_INTERVAL'),
+            config.get('TRAFFIC_ALERT_UPDATE_RATE'),
             self.stop_event,
             statistics.update_traffic_alert_status
         )

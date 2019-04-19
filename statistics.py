@@ -2,6 +2,7 @@ from datetime import datetime
 from operator import itemgetter
 from config import config
 from parser import Parser
+from sliding_window import SlidingWindow
 
 
 class Statistics:
@@ -11,7 +12,8 @@ class Statistics:
         self.alert_logs = []
         self.is_alert_on = False
         self.section_activity = {}
-        self.traffic_monitor_counter = 0
+        self.traffic_monitor = SlidingWindow(
+            config['TRAFFIC_ALERT_TIME_WINDOW'])
         self.errors_monitor_counter = 0
 
     def queue_data(self, data):
@@ -19,17 +21,19 @@ class Statistics:
         if(parsed_data is not None):
             if parsed_data['status'] >= 400:
                 self.errors_monitor_counter += 1
-            self.traffic_monitor_counter += 1
+            self.traffic_monitor.push()
             self.activity_queue.append(parsed_data)
 
     def update_traffic_alert_status(self):
-        average_traffic = self.traffic_monitor_counter / \
-            config.get('TRAFFIC_ALERT_INTERVAL')
+        self.traffic_monitor.update()
+        alert_monitor_items_count = self.traffic_monitor.count_elements()
+        average_traffic = alert_monitor_items_count / \
+            config.get('TRAFFIC_ALERT_TIME_WINDOW')
         if(average_traffic > config.get('AVERAGE_TRAFFIC_TRESHOLD')):
             self.is_alert_on = True
             self.alert_logs.append(
                 "High traffic - {} hits - Triggered at {}".format(
-                    self.traffic_monitor_counter,
+                    alert_monitor_items_count,
                     datetime.now()
                 )
             )
@@ -37,11 +41,10 @@ class Statistics:
             self.is_alert_on = False
             self.alert_logs.append(
                 "Normal traffic - {} hits - Recovered at {}".format(
-                    self.traffic_monitor_counter,
+                    alert_monitor_items_count,
                     datetime.now()
                 )
             )
-        self.traffic_monitor_counter = 0
 
     def update_error_alert_status(self):
         max_error = self.errors_monitor_counter / \

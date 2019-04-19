@@ -14,14 +14,16 @@ class StatisticsTest(unittest.TestCase):
 
         # Precheck
         self.assertEqual(len(self.statistics.activity_queue), 0)
-        self.assertEqual(self.statistics.traffic_monitor_counter, 0)
+        self.assertEqual(
+            self.statistics.traffic_monitor.count_elements(), 0)
 
         # Update
         self.statistics.queue_data(valid_data)
 
         # Postcheck
         self.assertEqual(len(self.statistics.activity_queue), 1)
-        self.assertEqual(self.statistics.traffic_monitor_counter, 1)
+        self.assertEqual(
+            self.statistics.traffic_monitor.count_elements(), 1)
 
     def test_queue_data_failure(self):
             # Setup
@@ -29,18 +31,21 @@ class StatisticsTest(unittest.TestCase):
 
         # Precheck
         self.assertEqual(len(self.statistics.activity_queue), 0)
-        self.assertEqual(self.statistics.traffic_monitor_counter, 0)
+        self.assertEqual(
+            self.statistics.traffic_monitor.count_elements(), 0)
 
         # Update
         self.statistics.queue_data(invalid_data)
 
         # Postcheck
         self.assertEqual(len(self.statistics.activity_queue), 0)
-        self.assertEqual(self.statistics.traffic_monitor_counter, 0)
+        self.assertEqual(
+            self.statistics.traffic_monitor.count_elements(), 0)
 
     def test_alert_traffic_trigger(self):
         # Setup
-        self.statistics.traffic_monitor_counter = 10000
+        for i in range(1, 10000):
+            self.statistics.traffic_monitor.push()
 
         # Precheck
         self.assertEqual(len(self.statistics.alert_logs), 0)
@@ -55,12 +60,11 @@ class StatisticsTest(unittest.TestCase):
             self.statistics.alert_logs[-1],
             "High traffic - (.*) hits - Triggered at (.*)"
         )
-        self.assertEqual(self.statistics.traffic_monitor_counter, 0)
 
     def test_alert_traffic_recovery(self):
         # Setup
         self.statistics.is_alert_on = True
-        self.statistics.traffic_monitor_counter = 1
+        self.statistics.traffic_monitor.push()
 
         # Precheck
         self.assertEqual(len(self.statistics.alert_logs), 0)
@@ -75,7 +79,6 @@ class StatisticsTest(unittest.TestCase):
             self.statistics.alert_logs[-1],
             "Normal traffic - (.*) hits - Recovered at (.*)"
         )
-        self.assertEqual(self.statistics.traffic_monitor_counter, 0)
 
     def test_alert_error_trigger(self):
         # Setup
@@ -98,7 +101,6 @@ class StatisticsTest(unittest.TestCase):
     def test_alert_normal_activity(self):
             # Setup
         self.statistics.is_alert_on = False
-        self.statistics.traffic_monitor_counter = 0
 
         # Precheck
         self.assertEqual(len(self.statistics.alert_logs), 0)
@@ -109,7 +111,6 @@ class StatisticsTest(unittest.TestCase):
         # Postcheck
         self.assertFalse(self.statistics.is_alert_on)
         self.assertEqual(len(self.statistics.alert_logs), 0)
-        self.assertEqual(self.statistics.traffic_monitor_counter, 0)
 
     def test_update_activity_statistics(self):
         # Setup

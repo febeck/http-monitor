@@ -32,8 +32,11 @@ All configuration can be altered in the `config.py` file.
     # Interval (in seconds) before updating statistics
     'STATISTICS_INTERVAL': 10,
 
-    # Interval of time (in seconds) to check for traffic alarm status
-    'TRAFFIC_ALERT_INTERVAL': 120,
+    # Width of the window (in seconds) in which to check for traffic alert
+    'TRAFFIC_ALERT_TIME_WINDOW': 120,
+
+    # Update rate to recheck if alert should be triggered or recovered
+    'TRAFFIC_ALERT_UPDATE_RATE': 10,
 }
 ```
 
