@@ -33,3 +33,10 @@ class UpdatesScheduler:
             statistics.update_traffic_alert_status
         )
         self.traffic_alert_timer.start()
+
+        self.error_alert_timer = Scheduler(
+            config.get('ERRORS_ALERT_INTERVAL'),
+            self.stop_event,
+            statistics.update_error_alert_status
+        )
+        self.error_alert_timer.start()
