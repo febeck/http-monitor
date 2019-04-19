@@ -23,7 +23,7 @@ class UpdatesScheduler:
         self.statistics_timer = Scheduler(
             config.get('STATISTICS_INTERVAL'),
             self.stop_event,
-            statistics.update_activity_statistics
+            statistics.clean_section_activity
         )
         self.statistics_timer.start()
 

@@ -11,10 +11,11 @@ class StatisticsTest(unittest.TestCase):
     def test_queue_data_succes(self):
         # Setup
         valid_data = '127.0.0.1 - james [09/May/2018:16:00:39 +0000] "GET /report/user HTTP/1.0" 200 123'
-        valid_data_error_status = '127.0.0.1 - james [09/May/2018:16:00:39 +0000] "GET /report/user HTTP/1.0" 500 123'
+        valid_data = '127.0.0.1 - john [09/May/2018:16:00:39 +0000] "GET /report/user HTTP/1.0" 200 123'
+        valid_data_error_status = '127.0.0.1 - james [09/May/2018:16:00:39 +0000] "GET /stats/user HTTP/1.0" 500 123'
 
         # Precheck
-        self.assertEqual(len(self.statistics.activity_queue), 0)
+        self.assertEqual(len(self.statistics.section_activity), 0)
         self.assertEqual(
             self.statistics.traffic_monitor.count_elements(), 0)
         self.assertEqual(
@@ -25,7 +26,8 @@ class StatisticsTest(unittest.TestCase):
         self.statistics.queue_data(valid_data_error_status)
 
         # Postcheck
-        self.assertEqual(len(self.statistics.activity_queue), 2)
+        # Section activity has 2 entries because logs concern 2 section (/report and /stats)
+        self.assertEqual(len(self.statistics.section_activity), 2)
         self.assertEqual(
             self.statistics.traffic_monitor.count_elements(), 2)
         self.assertEqual(
@@ -36,7 +38,7 @@ class StatisticsTest(unittest.TestCase):
         invalid_data = 'Invalid data'
 
         # Precheck
-        self.assertEqual(len(self.statistics.activity_queue), 0)
+        self.assertEqual(len(self.statistics.section_activity), 0)
         self.assertEqual(
             self.statistics.traffic_monitor.count_elements(), 0)
         self.assertEqual(
@@ -46,7 +48,7 @@ class StatisticsTest(unittest.TestCase):
         self.statistics.queue_data(invalid_data)
 
         # Postcheck
-        self.assertEqual(len(self.statistics.activity_queue), 0)
+        self.assertEqual(len(self.statistics.section_activity), 0)
         self.assertEqual(
             self.statistics.traffic_monitor.count_elements(), 0)
         self.assertEqual(
@@ -122,49 +124,89 @@ class StatisticsTest(unittest.TestCase):
         self.assertFalse(self.statistics.is_alert_on)
         self.assertEqual(len(self.statistics.alert_logs), 0)
 
-    def test_update_activity_statistics(self):
+    def test_update_section_activity_existing_section(self):
         # Setup
-        parsed_line_1 = Parser.parse_log_line(
-            '127.0.0.1 - james [09/May/2018:16:00:39 +0000] "GET /report HTTP/1.0" 200 123')
-        parsed_line_2 = Parser.parse_log_line(
-            '127.0.0.1 - jill [09/May/2018:16:00:41 +0000] "GET /api/event HTTP/1.0" 200 234')
-        parsed_line_3 = Parser.parse_log_line(
-            '127.0.0.1 - frank [09/May/2018:16:00:42 +0000] "POST /api/user/profile HTTP/1.0" 400 34')
-        parsed_line_4 = Parser.parse_log_line(
-            '127.0.0.1 - mary [09/May/2018:16:00:42 +0000] "POST /api/user HTTP/1.0" 503 12')
-        self.statistics.activity_queue = [
-            parsed_line_1,
-            parsed_line_2,
-            parsed_line_3,
-            parsed_line_4,
-        ]
+        self.statistics.section_activity = {
+            '/report': {
+                'errors_count': 0,
+                'heaviest_request': 123,
+                'hits': 1,
+                'section': '/report',
+            },
+            '/api': {
+                'errors_count': 2,
+                'heaviest_request': 234,
+                'hits': 1,
+                'section': '/api',
+            }
+        }
+        parsed_line = Parser.parse_log_line(
+            '127.0.0.1 - james [09/May/2018:16:00:39 +0000] "GET /report HTTP/1.0" 500 999')
 
         # Precheck
-        self.assertEqual(len(self.statistics.activity_queue), 4)
-        self.assertEqual(self.statistics.section_activity, {})
+        self.assertEqual(len(self.statistics.section_activity), 2)
 
         # Update
-        self.statistics.update_activity_statistics()
+        self.statistics.update_activity_statistics(parsed_line)
 
         # Postcheck
         self.assertDictEqual(
             self.statistics.section_activity,
             {
                 '/report': {
-                    'errors_count': 0,
-                    'heaviest_request': 123,
+                    'errors_count': 1,
+                    'heaviest_request': 999,
+                    'hits': 2,
+                    'section': '/report',
+                },
+                '/api': {
+                    'errors_count': 2,
+                    'heaviest_request': 234,
+                    'hits': 1,
+                    'section': '/api',
+                }
+            }
+        )
+        self.assertEqual(len(self.statistics.section_activity), 2)
+
+    def test_update_section_activity_new_section(self):
+        # Setup
+        self.statistics.section_activity = {
+            '/api': {
+                'errors_count': 2,
+                'heaviest_request': 234,
+                'hits': 1,
+                'section': '/api',
+            }
+        }
+        parsed_line = Parser.parse_log_line(
+            '127.0.0.1 - james [09/May/2018:16:00:39 +0000] "GET /report HTTP/1.0" 500 999')
+
+        # Precheck
+        self.assertEqual(len(self.statistics.section_activity), 1)
+
+        # Update
+        self.statistics.update_activity_statistics(parsed_line)
+
+        # Postcheck
+        self.assertDictEqual(
+            self.statistics.section_activity,
+            {
+                '/report': {
+                    'errors_count': 1,
+                    'heaviest_request': 999,
                     'hits': 1,
                     'section': '/report',
                 },
                 '/api': {
                     'errors_count': 2,
                     'heaviest_request': 234,
-                    'hits': 3,
+                    'hits': 1,
                     'section': '/api',
                 }
             }
         )
-        self.assertEqual(len(self.statistics.activity_queue), 0)
+        self.assertEqual(len(self.statistics.section_activity), 2)
 
     def test_get_sorted_section_activity(self):
         # Setup

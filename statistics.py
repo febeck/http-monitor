@@ -8,7 +8,6 @@ from sliding_window import SlidingWindow
 class Statistics:
 
     def __init__(self):
-        self.activity_queue = []
         self.alert_logs = []
         self.is_alert_on = False
         self.section_activity = {}
@@ -23,7 +22,7 @@ class Statistics:
             if parsed_data['status'] >= 400:
                 self.errors_monitor.push()
             self.traffic_monitor.push()
-            self.activity_queue.append(parsed_data)
+            self.update_activity_statistics(parsed_data)
 
     def update_traffic_alert_status(self):
         self.traffic_monitor.update()
@@ -60,23 +59,23 @@ class Statistics:
                 )
             )
 
-    def update_activity_statistics(self):
+    def update_activity_statistics(self, data):
+        section = self.section_activity.get(data['section'], {
+            'errors_count': 0,
+            'heaviest_request': 0,
+            'hits': 0,
+            'section': data['section'],
+        })
+        updated_section = {
+            'errors_count': section['errors_count'] + 1 if data['status'] >= 400 else section['errors_count'],
+            'heaviest_request': data['bytes'] if data['bytes'] > section['heaviest_request'] else section['heaviest_request'],
+            'hits': section['hits'] + 1,
+            'section': data['section'],
+        }
+        self.section_activity[data['section']] = updated_section
+
+    def clean_section_activity(self):
         self.section_activity = {}
-        for data in self.activity_queue:
-            section = self.section_activity.get(data['section'], {
-                'errors_count': 0,
-                'heaviest_request': 0,
-                'hits': 0,
-                'section': data['section'],
-            })
-            updated_section = {
-                'errors_count': section['errors_count'] + 1 if data['status'] >= 400 else section['errors_count'],
-                'heaviest_request': data['bytes'] if data['bytes'] > section['heaviest_request'] else section['heaviest_request'],
-                'hits': section['hits'] + 1,
-                'section': data['section'],
-            }
-            self.section_activity[data['section']] = updated_section
-        self.activity_queue = []
 
     def get_sorted_section_activity(self):
         return sorted(
