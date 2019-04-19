@@ -17,8 +17,11 @@ All configuration can be altered in the `config.py` file.
     # Treshold (in request/second) before firing the alarm
     'AVERAGE_TRAFFIC_TRESHOLD': 10,
 
-    # Interval of time (in seconds) to check for error alarm
-    'ERRORS_ALERT_INTERVAL': 10,
+    # Width of the window (in seconds) in which to check for errors alert
+    'ERRORS_ALERT_TIME_WINDOW': 10,
+
+    # Update rate to recheck if error should be triggered
+    'ERRORS_ALERT_TIME_WINDOW': 10,
 
     # Path of log file
     'INPUT_LOG_FILE_PATH': '/var/log/access.log',

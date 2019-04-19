@@ -11,19 +11,25 @@ class StatisticsTest(unittest.TestCase):
     def test_queue_data_succes(self):
         # Setup
         valid_data = '127.0.0.1 - james [09/May/2018:16:00:39 +0000] "GET /report/user HTTP/1.0" 200 123'
+        valid_data_error_status = '127.0.0.1 - james [09/May/2018:16:00:39 +0000] "GET /report/user HTTP/1.0" 500 123'
 
         # Precheck
         self.assertEqual(len(self.statistics.activity_queue), 0)
         self.assertEqual(
             self.statistics.traffic_monitor.count_elements(), 0)
+        self.assertEqual(
+            self.statistics.errors_monitor.count_elements(), 0)
 
         # Update
         self.statistics.queue_data(valid_data)
+        self.statistics.queue_data(valid_data_error_status)
 
         # Postcheck
-        self.assertEqual(len(self.statistics.activity_queue), 1)
+        self.assertEqual(len(self.statistics.activity_queue), 2)
         self.assertEqual(
-            self.statistics.traffic_monitor.count_elements(), 1)
+            self.statistics.traffic_monitor.count_elements(), 2)
+        self.assertEqual(
+            self.statistics.errors_monitor.count_elements(), 1)
 
     def test_queue_data_failure(self):
             # Setup
@@ -33,6 +39,8 @@ class StatisticsTest(unittest.TestCase):
         self.assertEqual(len(self.statistics.activity_queue), 0)
         self.assertEqual(
             self.statistics.traffic_monitor.count_elements(), 0)
+        self.assertEqual(
+            self.statistics.errors_monitor.count_elements(), 0)
 
         # Update
         self.statistics.queue_data(invalid_data)
@@ -41,6 +49,8 @@ class StatisticsTest(unittest.TestCase):
         self.assertEqual(len(self.statistics.activity_queue), 0)
         self.assertEqual(
             self.statistics.traffic_monitor.count_elements(), 0)
+        self.assertEqual(
+            self.statistics.errors_monitor.count_elements(), 0)
 
     def test_alert_traffic_trigger(self):
         # Setup
@@ -82,7 +92,8 @@ class StatisticsTest(unittest.TestCase):
 
     def test_alert_error_trigger(self):
         # Setup
-        self.statistics.errors_monitor_counter = 10000
+        for i in range(1, 10000):
+            self.statistics.errors_monitor.push()
 
         # Precheck
         self.assertEqual(len(self.statistics.alert_logs), 0)
@@ -96,7 +107,6 @@ class StatisticsTest(unittest.TestCase):
             self.statistics.alert_logs[-1],
             "Too many errors - Errors: (.*) - Triggered at (.*)"
         )
-        self.assertEqual(self.statistics.errors_monitor_counter, 0)
 
     def test_alert_normal_activity(self):
             # Setup

@@ -14,13 +14,14 @@ class Statistics:
         self.section_activity = {}
         self.traffic_monitor = SlidingWindow(
             config['TRAFFIC_ALERT_TIME_WINDOW'])
-        self.errors_monitor_counter = 0
+        self.errors_monitor = SlidingWindow(
+            config['ERRORS_ALERT_TIME_WINDOW'])
 
     def queue_data(self, data):
         parsed_data = Parser.parse_log_line(data)
         if(parsed_data is not None):
             if parsed_data['status'] >= 400:
-                self.errors_monitor_counter += 1
+                self.errors_monitor.push()
             self.traffic_monitor.push()
             self.activity_queue.append(parsed_data)
 
@@ -47,16 +48,17 @@ class Statistics:
             )
 
     def update_error_alert_status(self):
-        max_error = self.errors_monitor_counter / \
-            config.get('ERRORS_ALERT_INTERVAL')
+        self.errors_monitor.update()
+        errors_monitor_items_count = self.errors_monitor.count_elements()
+        max_error = errors_monitor_items_count / \
+            config.get('ERRORS_ALERT_TIME_WINDOW')
         if(max_error > config.get('MAX_ERRORS_TRESHOLD')):
             self.alert_logs.append(
                 "Too many errors - Errors: {} - Triggered at {}".format(
-                    max_error,
+                    errors_monitor_items_count,
                     datetime.now()
                 )
             )
-        self.errors_monitor_counter = 0
 
     def update_activity_statistics(self):
         self.section_activity = {}
